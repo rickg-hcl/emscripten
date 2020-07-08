@@ -6483,6 +6483,56 @@ return malloc(size);
       'invoke_byval', 'i24_ce_fastcomp',
     ]
 
+    returns_non_zero = [
+      'abs',
+      'aliases_fastcomp',
+      'allocavartop',
+      'atomicrmw',
+      'atomicrmw_dec',
+      'boolret_fastcomp',
+      'caall',
+      'call_i64_noret',
+      'callalias',
+      'callalias2',
+      'cmpxchg_volatile',
+      'dollar',
+      'emptyasm_aue',
+      'fixablebadcasts_fastcomp',
+      'floatreturningfuncptr',
+      'floatundefinvoke_fastcomp',
+      'fptosi',
+      'funcptr',
+      'i24_mem_ta2',
+      'i96_ashr_ta2',
+      'icmp64',
+      'inttoptrfloat',
+      'invoke_byval',
+      'legalizer_b_ta2',
+      'legalizer_ta2',
+      'phientryimplicit',
+      'phientryimplicitmix',
+      'phientryimplicitmoar',
+      'phinonreachable64',
+      'phiundefi64',
+      'returnfp',
+      'returnnan_fastcomp',
+      'rust_struct',
+      'sadd_overflow_ta2',
+      'selectadd',
+      'selectstruct',
+      'sillyfuncast',
+      'storebigfloat',
+      'sub_11_0',
+      'subnums',
+      'trace',
+      'typestr',
+      'uadd_overflow_64_ta2',
+      'uadd_overflow_ta2',
+      'udiv',
+      'unaligneddouble',
+      'zeroextarg',
+    ]
+
     need_no_error_on_undefined_symbols = [
       'unsanitized_declare'
     ]
@@ -6511,6 +6561,8 @@ return malloc(size);
       shortname = os.path.splitext(name)[0]
       # TODO: test only worked in non-fastcomp (well, these cases)
       basename = os.path.basename(shortname)
+      if basename == returns_non_zero[-1]:
+        continue
       if basename in skip_tests:
         continue
       if self.is_wasm() and basename in skip_wasm:
@@ -6541,7 +6593,8 @@ return malloc(size);
         if os.path.exists(shortname + '.emcc'):
           self.emcc_args += json.loads(open(shortname + '.emcc').read())
 
-        self.do_ll_run(path_from_root('tests', 'cases', name), output, assert_returncode=None)
+        expect_fail = basename in returns_non_zero
+        self.do_ll_run(path_from_root('tests', 'cases', name), output, assert_returncode=None if expect_fail else 0)
 
       # Optional source checking, a python script that gets a global generated with the source
       src_checker = path_from_root('tests', 'cases', shortname + '.py')
@@ -6582,7 +6635,7 @@ return malloc(size);
         if name.endswith('.cpp'):
           self.emcc_args.append('-std=c++03')
         self.do_run(open(path_from_root('tests', 'fuzz', name)).read(),
-                    open(path_from_root('tests', 'fuzz', name + '.txt')).read(), force_c=name.endswith('.c'), assert_returncode=None)
+                    open(path_from_root('tests', 'fuzz', name + '.txt')).read(), force_c=name.endswith('.c'))
         if name.endswith('.cpp'):
           self.emcc_args.remove('-std=c++03')
 
