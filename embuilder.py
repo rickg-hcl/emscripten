@@ -58,7 +58,6 @@ MINIMAL_TASKS = [
 ]
 
 USER_TASKS = [
-    'binaryen',
     'boost_headers',
     'bullet',
     'bzip2',
