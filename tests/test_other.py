@@ -861,31 +861,31 @@ f.close()
     '''
     create_test_file('src.c', src)
 
-    def test(args, expected):
+    def test(args, expected, assert_returncode):
       print(args, expected)
       run_process([EMCC, 'src.c'] + args, stderr=PIPE)
-      self.assertContained(expected, run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None))
+      self.assertContained(expected, run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=assert_returncode))
       if self.is_wasm_backend():
         return
       print('in asm.js')
       run_process([EMCC, 'src.c', '-s', 'WASM=0'] + args, stderr=PIPE)
-      self.assertContained(expected, run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None))
+      self.assertContained(expected, run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=assert_returncode))
       # TODO: emulation function support in wasm is imperfect
       print('with emulated function pointers in asm.js')
       run_process([EMCC, '-s', 'WASM=0', 'src.c', '-s', 'ASSERTIONS=1'] + args + ['-s', 'EMULATED_FUNCTION_POINTERS=1'], stderr=PIPE)
-      out = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None)
+      out = run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=assert_returncode)
       self.assertContained(expected, out)
 
     # fastcomp. all asm, so it can't just work with wrong sigs. but,
     # ASSERTIONS=2 gives much better info to debug
     # Case 1: No useful info, but does mention ASSERTIONS
-    test(['-O1'], 'ASSERTIONS')
+    test(['-O1'], 'ASSERTIONS', True)
     # Case 2: Some useful text
     test(['-O1', '-s', 'ASSERTIONS=1'], [
         'Invalid function pointer',
         "called with signature 'v'. Perhaps this is an invalid value",
         'Build with ASSERTIONS=2 for more info'
-    ])
+    ], True)
     # Case 3: actually useful identity of the bad pointer, with comparisons to
     # what it would be in other types/tables
     test(['-O1', '-s', 'ASSERTIONS=2'], [
@@ -895,9 +895,9 @@ f.close()
         'Invalid function pointer',
         "called with signature 'v'. Perhaps this is an invalid value",
         "i: asm['_my_func']"
-    ])
+    ], True)
     # Case 4: emulate so it works
-    test(['-O1', '-s', 'EMULATE_FUNCTION_POINTER_CASTS=1'], 'my func\n')
+    test(['-O1', '-s', 'EMULATE_FUNCTION_POINTER_CASTS=1'], 'my func\n', 0)
 
   @no_wasm_backend('uses EMULATED_FUNCTION_POINTERS')
   def test_emulate_function_pointer_casts_assertions_2(self):
