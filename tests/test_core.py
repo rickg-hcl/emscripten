@@ -512,7 +512,7 @@ class TestCoreBase(RunnerCore):
     for text, output in [('fleefl', '892BDB6FD3F62E863D63DA55851700FDE3ACF30204798CE9'),
                          ('fleefl2', 'AA2CC5F96FC9D540CA24FDAF1F71E2942753DB83E8A81B61'),
                          ('64bitisslow', '64D8470573635EC354FEE7B7F87C566FCAF1EFB491041670')]:
-      self.do_run('src.cpp.o.js', 'hash value: ' + output, [text], no_build=True, assert_returncode=None)
+      self.do_run('src.cpp.o.js', 'hash value: ' + output, [text], no_build=True)
 
   def test_unaligned(self):
     self.skipTest('LLVM marks the reads of s as fully aligned, making this test invalid')
@@ -1219,7 +1219,8 @@ int main() {
       self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_caught.out'))
 
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
-      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'), assert_returncode=None)
+      # TODO: add assert_returncode=None when node switches its default
+      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'))
 
   @with_both_exception_handling
   def test_exceptions_custom(self):
@@ -1629,7 +1630,10 @@ int main() {
           return 0;
         }
       ''' % addr
-      self.do_run(src, 'segmentation fault' if addr.isdigit() else 'marfoosh', assert_returncode=None)
+      if addr.isdigit():
+        self.do_run(src, 'segmentation fault', assert_returncode=None)
+      else:
+        self.do_run(src, 'marfoosh')
 
   def test_dynamic_cast(self):
     self.do_run_in_out_file_test('tests', 'core', 'test_dynamic_cast')
@@ -2039,7 +2043,8 @@ int main(int argc, char **argv) {
     self.set_setting('MINIMAL_RUNTIME', 1)
     src = open(path_from_root('tests', 'core', 'test_memorygrowth.c')).read()
     # Fail without memory growth
-    self.do_run(src, 'OOM', assert_returncode=None)
+    # TODO: add assert_returncode=None when node switches its default
+    self.do_run(src, 'OOM')
     # Win with it
     self.emcc_args += ['-Wno-almost-asm', '-s', 'ALLOW_MEMORY_GROWTH']
     self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
@@ -2210,7 +2215,7 @@ int main(int argc, char **argv) {
 26214: what?
 35040: GL_STREAM_DRAW (0x88E0)
 3060: what?
-''', args=['34962', '26214', '35040', str(0xbf4)], assert_returncode=None)
+''', args=['34962', '26214', '35040', str(0xbf4)])
 
   @no_wasm2js('massive switches can break js engines')
   @is_slow_test
@@ -6726,19 +6731,21 @@ return malloc(size);
 
   def test_getValue_setValue(self):
     # these used to be exported, but no longer are by default
-    def test(output_prefix='', args=[]):
+    def test(output_prefix='', args=[], assert_returncode=0):
       old = self.emcc_args[:]
       self.emcc_args += args
-      self.do_run(open(path_from_root('tests', 'core', 'getValue_setValue.cpp')).read(),
-                  open(path_from_root('tests', 'core', 'getValue_setValue' + output_prefix + '.txt')).read(), assert_returncode=None)
+      src = open(path_from_root('tests', 'core', 'getValue_setValue.cpp')).read()
+      expected = open(path_from_root('tests', 'core', 'getValue_setValue' + output_prefix + '.txt')).read(),
+      self.do_run(src, expected, assert_returncode=assert_returncode)
       self.emcc_args = old
+
     # see that direct usage (not on module) works. we don't export, but the use
     # keeps it alive through JSDCE
     test(args=['-DDIRECT'])
     # see that with assertions, we get a nice error message
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', [])
     self.set_setting('ASSERTIONS', 1)
-    test('_assert')
+    test('_assert', assert_returncode=None)
     self.set_setting('ASSERTIONS', 0)
     # see that when we export them, things work on the module
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['getValue', 'setValue'])
@@ -6749,7 +6756,7 @@ return malloc(size);
     for use_files in (0, 1):
       print(use_files)
 
-      def test(output_prefix='', args=[], assert_returncode=None):
+      def test(output_prefix='', args=[], assert_returncode=0):
         if use_files:
           args += ['-DUSE_FILES']
         print(args)
@@ -6775,12 +6782,12 @@ return malloc(size);
 
   def test_legacy_exported_runtime_numbers(self):
     # these used to be exported, but no longer are by default
-
-    def test(output_prefix='', args=[]):
+    def test(output_prefix='', args=[], assert_returncode=0):
       old = self.emcc_args[:]
       self.emcc_args += args
-      self.do_run(open(path_from_root('tests', 'core', 'legacy_exported_runtime_numbers.cpp')).read(),
-                  open(path_from_root('tests', 'core', 'legacy_exported_runtime_numbers' + output_prefix + '.txt')).read(), assert_returncode=None)
+      src = open(path_from_root('tests', 'core', 'legacy_exported_runtime_numbers.cpp')).read()
+      expected = open(path_from_root('tests', 'core', 'legacy_exported_runtime_numbers' + output_prefix + '.txt')).read()
+      self.do_run(src, expected, assert_returncode=assert_returncode)
       self.emcc_args = old
 
     # see that direct usage (not on module) works. we don't export, but the use
@@ -6789,7 +6796,7 @@ return malloc(size);
     # see that with assertions, we get a nice error message
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', [])
     self.set_setting('ASSERTIONS', 1)
-    test('_assert')
+    test('_assert', assert_returncode=None)
     self.set_setting('ASSERTIONS', 0)
     # see that when we export them, things work on the module
     self.set_setting('EXTRA_EXPORTED_RUNTIME_METHODS', ['ALLOC_DYNAMIC'])
@@ -8261,8 +8268,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_environment(self):
     self.set_setting('ASSERTIONS', 1)
 
-    def test():
-      self.do_run_in_out_file_test('tests', 'core', 'test_hello_world', assert_returncode=None)
+    def test(assert_returncode=0):
+      self.do_run_in_out_file_test('tests', 'core', 'test_hello_world', assert_returncode=assert_returncode)
       js = open('src.c.o.js').read()
       assert ('require(' in js) == ('node' in self.get_setting('ENVIRONMENT')), 'we should have require() calls only if node js specified'
 
@@ -8285,7 +8292,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.set_setting('ENVIRONMENT', wrong)
       print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
       try:
-        test()
+        test(assert_returncode=None)
         raise Exception('unexpected success')
       except Exception as e:
         self.assertContained('not compiled for this environment', str(e))

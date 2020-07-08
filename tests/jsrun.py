@@ -115,7 +115,11 @@ def run_js(filename, engine=None, args=[],
   out = ['' if o is None else o for o in (stdout, stderr)]
   ret = '\n'.join(out) if full_output else out[0]
 
-  if assert_returncode is not None and proc.returncode is not assert_returncode:
+  # assert_returncode = None means we expect a failure.
+  if assert_returncode is None:
+    if proc.returncode == 0:
+      raise CalledProcessError(proc.returncode, ' '.join(command), str(ret))
+  elif proc.returncode != assert_returncode:
     raise CalledProcessError(proc.returncode, ' '.join(command), str(ret))
 
   return ret
