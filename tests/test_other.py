@@ -3396,7 +3396,7 @@ int main() {
       print(opts)
       result = run_process([EMCC, path_from_root('tests', 'hello_world.c'), '--pre-js', 'pre.js'] + opts, stderr=PIPE, check=False)
       if result.returncode == 0:
-        self.assertContained(expected, run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=None))
+        self.assertContained(expected, run_js('a.out.js', stderr=PIPE, full_output=True, assert_returncode=0 if opts else None))
       else:
         self.assertContained(expected, result.stderr)
 

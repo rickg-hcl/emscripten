@@ -1220,7 +1220,10 @@ int main() {
 
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 1)
       # TODO: add assert_returncode=None when node switches its default
-      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'))
+      expect_fail = False
+      if self.is_wasm_backend() and self.get_setting('WASM') == 0:
+       expect_fail = True
+      self.do_run_from_file(path_from_root('tests', 'core', 'test_exceptions.cpp'), path_from_root('tests', 'core', 'test_exceptions_uncaught.out'), assert_returncode=None if expect_fail else 0)
 
   @with_both_exception_handling
   def test_exceptions_custom(self):
@@ -2043,8 +2046,10 @@ int main(int argc, char **argv) {
     self.set_setting('MINIMAL_RUNTIME', 1)
     src = open(path_from_root('tests', 'core', 'test_memorygrowth.c')).read()
     # Fail without memory growth
-    # TODO: add assert_returncode=None when node switches its default
-    self.do_run(src, 'OOM')
+    expect_fail = False
+    if self.get_setting('WASM') == 0:
+      expect_fail = True
+    self.do_run(src, 'OOM', assert_returncode=None if expect_fail else 0)
     # Win with it
     self.emcc_args += ['-Wno-almost-asm', '-s', 'ALLOW_MEMORY_GROWTH']
     self.do_run(src, '*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*')
@@ -8287,13 +8292,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
           'js': '|0|',
           'clamp': '|0|',
           'allow': TRAP_OUTPUTS
-        }[mode], assert_returncode=None)
+        }[mode], assert_returncode=None if mode=='allow' else 0)
       print('  f2i')
       self.do_run(open(path_from_root('tests', 'wasm', 'trap-f2i.cpp')).read(), {
           'js': '|1337|\n|4294967295|', # JS did an fmod 2^32 | normal
           'clamp': '|-2147483648|\n|4294967295|',
           'allow': TRAP_OUTPUTS
-        }[mode], assert_returncode=None)
+        }[mode], assert_returncode=None if mode=='allow' else 0)
 
   @node_pthreads
   def test_binaryen_2170_emscripten_atomic_cas_u8(self):
